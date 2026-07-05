@@ -1,9 +1,12 @@
-"""Corroborate two sources about the same agent — agreement, then a lie.
+"""Corroborate sources about the same agent — agreement, then a lie.
 
-Two sources are asked about the same agent. When they agree, nothing is
-reported. When one serves a different endpoint (tampering) and a third omits the
-agent entirely, the kernel reports exactly those two disagreements — with no
-network and no format knowledge, just views and a diff.
+Sources are asked about the same agent. Each ``check`` returns one
+``SweepResult`` per subject: a verdict (AGREE / DIVERGENT / INSUFFICIENT), the
+claims, and the findings. When the sources agree the verdict is AGREE with no
+findings. When one serves a different endpoint (tampering) and a third omits the
+agent entirely, the verdict is DIVERGENT and the kernel reports exactly those
+two disagreements — with no network and no format knowledge, just views and a
+diff.
 
 Run:  python examples/corroborate_sources.py
 """
@@ -46,12 +49,17 @@ async def main() -> None:
     liar = FakeSource("registry-b", {"acme": ("present", fake)})
     hider = FakeSource("registry-c", {"acme": ("absent", None)})
 
+    agree = await Corroborator([honest, FakeSource("registry-d", {"acme": ("present", real)})]).check(["acme"])
     print("Two honest sources agree:")
-    print(" ", await Corroborator([honest, FakeSource("registry-d", {"acme": ("present", real)})]).check(["acme"]))
+    for r in agree:
+        print(f"  {r.agent_id}: {r.verdict} ({len(r.findings)} findings)")
 
+    diverge = await Corroborator([honest, liar, hider]).check(["acme"])
     print("\nOne tampers, one omits:")
-    for f in await Corroborator([honest, liar, hider]).check(["acme"]):
-        print(f"  [{f.kind}] {f.agent_id}: {f.detail}")
+    for r in diverge:
+        print(f"  {r.agent_id}: {r.verdict}")
+        for f in r.findings:
+            print(f"    [{f.kind}/{f.confirmation}] {f.detail}")
 
 
 if __name__ == "__main__":

@@ -37,11 +37,13 @@ class Catalog:
 
 
 async def main() -> None:
-    findings = await Corroborator(
-        [Catalog("catalog-a", "claude-opus"), Catalog("catalog-b", "some-other-model")]
-    ).check(["acme"])
-    for f in findings:
-        print(f"  [{f.kind}] {f.agent_id}: {f.detail}")
+    results = await Corroborator([Catalog("catalog-a", "claude-opus"), Catalog("catalog-b", "some-other-model")]).check(
+        ["acme"]
+    )
+    for r in results:
+        print(f"  {r.agent_id}: {r.verdict}")
+        for f in r.findings:
+            print(f"    [{f.kind}/{f.confirmation}] {f.detail}")
 
 
 if __name__ == "__main__":

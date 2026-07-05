@@ -6,19 +6,28 @@ question, and it reports any disagreement. It is the machinery under
 cross-registry / cross-method divergence detection, factored out so any layer can
 reuse it.
 
-Four pieces, and only the resolvers know a wire format:
+It is the reference implementation of the IETF draft [*Multi-Source
+Corroboration for AI Agent Discovery*](https://github.com/Sharathvc23/sm-divergence)
+(`draft-chandra-agent-registry-corroboration-00`).
+
+Five pieces, and only the resolvers know a wire format:
 
 - **`View`** — the contract a claim implements: `comparable() → {field: value}`.
   Those fields are what gets compared; a `None` value never participates.
 - **`Resolver[T]`** — a per-source adapter: a canonical id → `(Status, View)`.
   It hides one source's format (an HTTP GET, a DID resolve, a DNS lookup) and
   MUST NOT raise — an unreachable source is `error` (no claim), never a false
-  `absent`.
-- **`diff_views`** — the pure diff: per-source claims → `Finding` list. It emits
-  `omission` (present on one source, positively absent on another) and one
-  finding per view field whose values disagree. It never learns its layer.
-- **`Corroborator`** — resolve every source, diff, and emit new findings once
-  (deduped). Fewer than two sources → no-op.
+  `absent`. It MAY expose a `vantage` (a network perspective).
+- **`Claim`** — one source's answer from one vantage at one instant.
+- **`diff_claims`** — the pure diff: a sweep's claims → `Finding` list. It emits
+  `omission` (present on one source, positively absent on another),
+  `source_equivocation` (one source's vantages disagree with each other), and
+  one finding per view field whose values disagree across sources. It never
+  learns its layer.
+- **`Corroborator`** — resolve every `(source, vantage)`, diff, apply
+  confirmation, and return one `SweepResult` per subject: a verdict
+  (`AGREE` / `DIVERGENT` / `INSUFFICIENT`), the claims, and the findings.
+  Fewer than two decisive claims → `INSUFFICIENT`.
 
 ## Install
 
@@ -47,16 +56,19 @@ class MyResolver:                       # your thin per-source adapter
     async def resolve(self, agent_id) -> tuple[Status, RecordView | None]:
         ...                             # query this source; normalize to RecordView
 
-findings = asyncio.run(
+results = asyncio.run(
     Corroborator([MyResolver("a"), MyResolver("b")]).check(["agent-1"])
 )
-for f in findings:
-    print(f.kind, f.agent_id, f.detail)
-    # endpoint agent-1 {'field': 'endpoint', 'values': {'a': 'https://real', 'b': 'https://evil'}}
+for r in results:
+    print(r.agent_id, r.verdict)             # agent-1 DIVERGENT
+    for f in r.findings:
+        print(" ", f.kind, f.confirmation, f.detail)
+        # endpoint suspected {'field': 'endpoint', 'values': {'a': 'https://real', 'b': 'https://evil'}}
 ```
 
 Long-running? Pass `on_finding=` — it fires once per distinct finding across the
-corroborator's lifetime.
+corroborator's lifetime — and `staleness_window_s=` to promote a re-observed
+finding from `suspected` to `confirmed`.
 
 ## Who uses it
 

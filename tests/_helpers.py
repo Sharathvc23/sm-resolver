@@ -22,11 +22,19 @@ class StubView:
 
 
 class FakeResolver:
-    """A resolver backed by a canned ``{agent_id: (Status, StubView | None)}`` table."""
+    """A resolver backed by a canned ``{agent_id: (Status, StubView | None)}`` table.
+    Set ``vantage`` to model one source seen from several network perspectives."""
 
-    def __init__(self, label: str, table: dict[str, tuple[Status, StubView | None]]) -> None:
+    def __init__(
+        self,
+        label: str,
+        table: dict[str, tuple[Status, StubView | None]],
+        *,
+        vantage: str | None = None,
+    ) -> None:
         self._label = label
         self._table = table
+        self.vantage = vantage
 
     @property
     def label(self) -> str:
