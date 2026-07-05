@@ -1,0 +1,42 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "sm-resolver"
+version = "0.1.0"
+description = "The source-agnostic corroboration kernel — Resolver[T], the View contract, a pure diff, and the Corroborator. Zero runtime dependencies."
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+authors = [{ name = "Sharath (Stellarminds)" }]
+keywords = ["ai-agents", "nanda", "corroboration", "divergence", "resolver", "accountability"]
+dependencies = []
+
+[project.optional-dependencies]
+dev = ["pytest>=8", "pytest-asyncio>=0.23", "ruff>=0.6", "mypy>=1.10"]
+
+[project.urls]
+Homepage = "https://github.com/Sharathvc23/sm-resolver"
+Spec = "https://github.com/Sharathvc23/sm-resolver/blob/main/SPEC.md"
+Whitepaper = "https://github.com/Sharathvc23/sm-resolver/blob/main/WHITEPAPER.md"
+
+[tool.hatch.build.targets.wheel]
+packages = ["sm_resolver"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 120
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+ignore = ["E501"]
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+files = ["sm_resolver"]

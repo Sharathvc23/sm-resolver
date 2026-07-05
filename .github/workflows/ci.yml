@@ -1,0 +1,28 @@
+name: ci
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+jobs:
+  ci-local:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.11", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - name: Pin Python
+        run: uv python pin ${{ matrix.python-version }}
+      # The same gate as `make ci-local` — green locally == green here.
+      - run: uv sync --extra dev
+      - run: uv run ruff check .
+      - run: uv run ruff format --check .
+      - run: uv run mypy sm_resolver
+      - run: uv run pytest -v
+      - name: Examples run
+        run: |
+          uv run python examples/corroborate_sources.py
+          uv run python examples/custom_layer.py
