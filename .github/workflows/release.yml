@@ -46,3 +46,7 @@ jobs:
       - name: Publish to PyPI
         # No `with: password:` — the action uses the OIDC token automatically.
         uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          # A re-pushed tag (e.g. a message reword) must no-op, not red-fail,
+          # when the version is already on PyPI.
+          skip-existing: true
