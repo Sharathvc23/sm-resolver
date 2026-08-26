@@ -6,7 +6,8 @@ divergence detection, factored out so any layer can reuse it:
 
 - ``View`` — the contract a claim implements (``comparable() → named fields``).
 - ``Resolver[T]`` — a per-source adapter: canonical id → ``(Status, View)``. A
-  resolver MAY also expose a ``vantage`` (a network perspective).
+  resolver MAY also expose a ``vantage`` — an observation context, ``class:value``
+  from a controlled vocabulary (SPEC.md §3a).
 - ``Claim`` — one source's answer from one vantage at one instant.
 - ``diff_claims`` — the pure diff: claims → ``Finding`` list (``omission``,
   ``source_equivocation``, and per-field divergence). It never learns its layer.

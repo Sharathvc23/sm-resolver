@@ -1,8 +1,8 @@
 # Corroboration Kernel — Procedure
 
-**Spec version:** `resolver/0.2-draft`
+**Spec version:** `resolver/0.3-draft`
 **Status:** DRAFT / Working Draft
-**Last edited:** 2026-07-04
+**Last edited:** 2026-08-26
 
 The keywords MUST, MUST NOT, SHOULD, SHOULD NOT, MAY are to be interpreted as in RFC 2119.
 
@@ -42,10 +42,69 @@ missing field is not a disagreement). The view type is the consumer's choice.
 ## 3a. Claims and vantage (draft §3)
 
 A **claim** is a source's answer about a subject from one **vantage** at one
-instant: `(source, vantage, status, view, observed_at, outcome)`. A vantage is a
-network perspective (a region, a resolver instance); it MAY be `null` for a
-single-vantage source. The unit of the diff is the claim, so one source observed
-from several vantages contributes several claims.
+instant: `(source, vantage, status, view, observed_at, outcome)`. The unit of the
+diff is the claim, so one source observed from several vantages contributes
+several claims.
+
+A **vantage** identifies the *observation context* — the conditions under which
+the claim was obtained — and NOT the observing instance. Two sweeps of the same
+source from two hosts in the same context bear the same vantage.
+
+### 3a.1 Vantage identifiers
+
+A vantage identifier MUST be either `null` (§3a.3) or a string of the form
+`class ":" value`, where `class` names the context dimension and `value` names the
+point on it. Both parts MUST match `[a-z0-9]([a-z0-9-]*[a-z0-9])?`. Examples:
+`region:eu`, `region:us`, `asn:as64500`.
+
+Identifiers are compared by exact octet equality. An implementation MUST NOT
+attempt to parse, order, or infer containment between values.
+
+### 3a.2 Requirements on the vocabulary
+
+A vantage vocabulary is only sound if independently-operated sweepers assign the
+same identifier to the same context. The following are therefore normative.
+
+- **Shared denotation.** Two claims bearing the same vantage identifier MUST
+  denote the same observation context, whichever source or sweeper produced them.
+  A sweeper MUST NOT mint a private meaning for a `class` defined elsewhere.
+- **Occupiability.** A `class` MUST be *occupiable*: a third party MUST be able to
+  construct the context and repeat the observation independently. `region` and
+  `asn` are occupiable — a verifier can observe from that region or that network.
+  Attributes of the *caller relationship* rather than the observation — caller
+  identity, tenant, subscription tier, authorization level — are NOT occupiable
+  and MUST NOT be encoded as a vantage. A claim that varies only on a
+  non-occupiable attribute cannot be independently checked, and a corroborator
+  that accepted one would be reporting the source's own assertion back as
+  evidence.
+- **Non-overlap.** Within one sweep, the vantages a sweeper uses MUST NOT overlap:
+  no observation context may be denoted by two identifiers, and no identifier may
+  denote two contexts. A sweeper that cannot guarantee this MUST use `null`
+  rather than guess.
+- **Cardinality.** A `class` MUST have a small, enumerable value set. A
+  high-cardinality dimension partitions observations until nothing is compared
+  against anything, which degrades corroboration to silence while appearing to
+  function.
+
+### 3a.3 The `null` vantage
+
+`null` means *the sweeper asserts no context* — the observation was made without
+controlling for any dimension. It is NOT a distinct context, and it MUST NOT be
+compared for equality against a non-`null` identifier as though it named one.
+
+`null` is the correct value for a single-vantage sweeper. It is also the required
+value where a sweeper cannot satisfy §3a.2; declining to name a context is always
+sound, whereas naming one wrongly is not.
+
+### 3a.4 Absence of variation
+
+A source that does not vary its answers by context and a source whose behaviour is
+simply unknown are different states, and today's claim model conflates them: both
+appear as a single claim from a single vantage.
+
+An implementation that can distinguish them SHOULD record the distinction, so that
+"this source was observed from one vantage only" is not read as "this source does
+not vary." How that distinction is carried is out of scope for this version.
 
 ## 4. The diff (draft §6)
 
