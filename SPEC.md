@@ -126,6 +126,52 @@ contribute nothing. Per subject:
 The diff MUST be pure: deterministic, no I/O, no raising. A subject MAY produce
 multiple findings.
 
+## 4b. Declared divergence (annotation)
+
+A source MAY publish, in advance, a declaration of which fields it varies and
+along which vantage class (§3a). A finding therefore carries two further members:
+
+- **`declared`** — a boolean, default `false`. `true` means a declaration
+  covering this variation was published by that source *before* the observation,
+  and was verified.
+- **`declaration_version`** — the revision of the declaration that was matched,
+  or `null`. Recording it is REQUIRED whenever `declared` is `true`: without a
+  version, a source retroactively legitimises past divergences by publishing a
+  broader declaration today.
+
+Three rules govern them.
+
+- **A declaration annotates a finding; it MUST NOT withdraw one.** The finding
+  stands, and the verdict (§5) is computed exactly as if the declaration did not
+  exist. A corroborator reports what it observed; deciding what an annotated
+  divergence is worth is the consumer's judgement, not the corroborator's.
+- **`declared` MUST NOT participate in the fingerprint** (§4a). The fingerprint
+  identifies the disagreement, and the disagreement does not change when the
+  source publishes or revises a declaration. Were it included, publishing a
+  declaration would silently reset first-observation tracking on every finding
+  already being followed.
+- **The kernel MUST NOT set either member.** It holds no declarations and
+  performs no verification; a layer that fetches, verifies and matches them
+  supplies the annotation. Absent that layer every finding is undeclared, which
+  is the conservative reading.
+
+### 4c. Scope violation
+
+`scope_violation` names a distinct and stronger finding: a source
+varied a field **contrary to a declaration it had itself published** — most
+plainly, one that positively asserted it does not vary. This is not an
+undeclared divergence; it is a published rule, broken.
+
+The name is bare because draft §11 reserves un-prefixed kind names for kinds the
+draft itself seeds, and draft `-01` seeds this one. A kind introduced by any
+other party MUST carry a reverse-DNS or URI prefix. Consumers MUST treat an
+unrecognised kind as informational and MUST NOT reject a record for carrying
+one.
+
+The kernel never emits this kind, for the same reason it never sets `declared`.
+It is named here so that implementations agree on one identifier rather than
+minting their own.
+
 ## 4a. Observation time and confirmation (draft §7)
 
 Every claim carries `observed_at` (epoch seconds). A finding is **`suspected`**
