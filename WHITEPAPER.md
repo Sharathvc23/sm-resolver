@@ -38,7 +38,10 @@ The operation factors into three pieces, and only the first knows a format:
   (`comparable() → {field: value}`). A `None` value never participates.
 - **Diff** — a pure function over the views from all sources. It emits `omission`
   (present on one, positively absent on another) and one finding per view field
-  whose values disagree. It never learns what layer it serves.
+  whose values disagree. Comparison is scoped to a *cohort* — the claims sharing
+  one observation context — which matters only when a source has declared that it
+  varies (§5); otherwise a single cohort spans every claim. It never learns what
+  layer it serves.
 
 Because the diff operates on normalized views, it is untouched by format
 heterogeneity — the same code compares a registry claim and a DID-document claim
@@ -71,8 +74,46 @@ Consequences of the threat model, not preferences.
    into one that discredits an honest source.
 4. **Detect; do not remediate.** The kernel reports *that* sources disagree and
    *how*. What to do about it is caller policy.
+5. **A declaration annotates; it never absolves.** A source may publish, in
+   advance, that it varies a field by context. Where it has, the finding is
+   marked as declared — and still emitted, with the verdict unchanged. This is
+   axiom 4 applied to declarations: whether a declared divergence is acceptable
+   is a judgement about policy, and a kernel that made it would be wrong for
+   every deployment whose policy differs.
 
-## 5. Composition
+## 5. Declared variation
+
+Not every difference between two sources is misbehavior. A registry under a
+data-residency obligation serves a different endpoint by design, and a detector
+that fires on normal operation is a detector nobody runs.
+
+A source can therefore declare, in advance, which fields it varies and along
+which *observation context* — a region, a network — and the kernel takes that
+declaration as already-verified data. It fetches nothing and verifies nothing;
+supplying a verified declaration is the layer's job, exactly as classifying a
+claim `present` or `absent` already is. Zero runtime dependencies are unaffected.
+
+Where a declaration applies, two things change and only two. The finding is
+marked declared (axiom 5). And the source is **not excluded** from cross-source
+comparison — instead its per-context values are compared against other sources'
+values *for the same context*.
+
+The second is the whole point. A source that disagrees with itself normally
+contributes no agreed value to the cross-source comparison, because a source that
+disagrees with itself cannot corroborate. Suppressing the finding while leaving
+that exclusion in place — the obvious implementation — would let a source declare
+variation, serve one region a forged value, and be reported as agreement, because
+nothing would remain to compare it against. That is worse than ignoring the
+declaration entirely. **A declaration redirects comparison into a cohort; it
+never removes comparison.**
+
+The constraint that makes this safe is that a context must be one a third party
+can *occupy*: a verifier can place itself in another region and check. An
+attribute of the caller relationship — identity, tenant, subscription tier —
+cannot be occupied, so a declaration about one could only be believed. The kernel
+compares contexts; `SPEC.md` §3a defines which ones are admissible.
+
+## 6. Composition
 
 `sm-resolver` is the base; layers supply a view and resolvers:
 
@@ -89,7 +130,7 @@ consumer: a discovery layer (registries — NEST, the NANDA Index) and an identi
 layer (DID methods — `did:key`, `did:web`, a Universal Resolver), each a thin set
 of resolvers over this kernel.
 
-## 6. NANDA alignment
+## 7. NANDA alignment
 
 Project NANDA's discovery is multi-source by design — a lean Index delegating to
 a quilt of registries. Corroboration is only *possible* because of that
@@ -97,13 +138,19 @@ decentralization: the redundancy built for resilience doubles as an integrity
 check. `sm-resolver` is the mechanism that turns that latent property into an
 active one, underpinning **accountable discovery** across the DNS and CA pillars.
 
-## 7. Future work
+## 8. Future work
 
 - A quorum reducer over findings (*k*-of-*n* agreement) for more than two sources.
 - Durable per-source divergence history (source reputation).
 - A normative wire schema for a shareable `Finding` (cross-tool interchange).
+- Proof that a declaration preceded the divergence it covers. Today a declaration
+  carries a monotonic sequence number, which orders declarations against each
+  other but not against an observation — so a source that is caught can still
+  publish a declaration afterwards. Closing this needs a witnessed history of
+  what was published when, which is the same transparency-log territory the
+  single-source case needs.
 
-## 8. Related packages
+## 9. Related packages
 
 | Package | Role |
 | --- | --- |
