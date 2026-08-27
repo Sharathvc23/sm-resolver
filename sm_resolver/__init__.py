@@ -28,7 +28,7 @@ from importlib.metadata import version as _dist_version
 from .claim import Claim
 from .corroborate import Corroborator, OnFinding
 from .diff import diff_claims, diff_views
-from .models import CONFIRMED, OMISSION, SOURCE_EQUIVOCATION, SUSPECTED, Finding
+from .models import CONFIRMED, OMISSION, SCOPE_VIOLATION, SOURCE_EQUIVOCATION, SUSPECTED, Finding
 from .resolver import Resolver, Status
 from .sweep import SweepResult, Verdict
 from .view import View, ViewT
@@ -46,6 +46,7 @@ except _PackageNotFoundError:  # running from a source tree, not installed
 __all__ = [
     "CONFIRMED",
     "OMISSION",
+    "SCOPE_VIOLATION",
     "SOURCE_EQUIVOCATION",
     "SUSPECTED",
     "Claim",

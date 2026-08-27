@@ -14,6 +14,14 @@ OMISSION = "omission"
 # source), distinct from disagreement between sources.
 SOURCE_EQUIVOCATION = "source_equivocation"
 
+# A source varied a field contrary to its OWN published Answer Scope — it
+# declared a rule and broke it. A strictly stronger accusation than an
+# undeclared divergence. Bare (un-prefixed) per draft §11, which reserves bare
+# names for kinds the draft itself seeds; this kind is seeded by draft -01. The
+# kernel never emits it — it has no declarations, so the layer that fetches and
+# matches them supplies it. Named here so the vocabulary is one thing.
+SCOPE_VIOLATION = "scope_violation"
+
 # Confirmation states (observation-time discipline): a first-seen disagreement
 # is suspected; one re-observed past the staleness window is confirmed.
 SUSPECTED = "suspected"
@@ -37,11 +45,15 @@ class Finding:
     agent_id: str
     detail: dict[str, object] = field(default_factory=dict)
     confirmation: str = SUSPECTED
+    declared: bool = False
+    declaration_version: str | None = None
 
     def fingerprint(self) -> str:
         """A stable key identifying the *disagreement* — excludes
-        ``confirmation`` (which changes as the same finding is re-observed), so
-        first-observation tracking and emission-dedup are stable."""
+        ``confirmation`` (which changes as the same finding is re-observed) and
+        the declaration state (which changes when a source publishes or revises
+        an Answer Scope), so first-observation tracking and emission-dedup are
+        stable across both."""
         return json.dumps(
             {"kind": self.kind, "agent_id": self.agent_id, "detail": self.detail},
             sort_keys=True,
@@ -53,4 +65,6 @@ class Finding:
             "agent_id": self.agent_id,
             "confirmation": self.confirmation,
             "detail": self.detail,
+            "declared": self.declared,
+            "declaration_version": self.declaration_version,
         }
