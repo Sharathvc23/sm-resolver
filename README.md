@@ -17,7 +17,8 @@ Five pieces, and only the resolvers know a wire format:
 - **`Resolver[T]`** — a per-source adapter: a canonical id → `(Status, View)`.
   It hides one source's format (an HTTP GET, a DID resolve, a DNS lookup) and
   MUST NOT raise — an unreachable source is `error` (no claim), never a false
-  `absent`. It MAY expose a `vantage` (a network perspective).
+  `absent`. It MAY expose a `vantage` — an observation context, `class:value`
+  from a controlled vocabulary (SPEC.md §3a).
 - **`Claim`** — one source's answer from one vantage at one instant.
 - **`diff_claims`** — the pure diff: a sweep's claims → `Finding` list. It emits
   `omission` (present on one source, positively absent on another),
