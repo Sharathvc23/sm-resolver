@@ -53,12 +53,25 @@ source from two hosts in the same context bear the same vantage.
 ### 3a.1 Vantage identifiers
 
 A vantage identifier MUST be either `null` (§3a.3) or a string of the form
-`class ":" value`, where `class` names the context dimension and `value` names the
-point on it. Both parts MUST match `[a-z0-9]([a-z0-9-]*[a-z0-9])?`. Examples:
-`region:eu`, `region:us`, `asn:as64500`.
+`class ":" value`, where `class` names the context dimension and `value` names a
+point on that dimension. Each component MUST match the regular expression
+`[a-z0-9](?:[a-z0-9-]*[a-z0-9])?`.
 
 Identifiers are compared by exact octet equality. An implementation MUST NOT
-attempt to parse, order, or infer containment between values.
+attempt to parse, order, normalize, or infer containment between values.
+
+Two occupiable classes are defined, each taking its value space from an external
+registry — which is what makes shared denotation (§3a.2) a fact rather than an
+agreement between sweepers:
+
+- **`region`** — an ISO 3166-1 alpha-2 code, lowercased. `region:de`, `region:us`,
+  and the exceptionally reserved `region:eu` are well-formed.
+- **`asn`** — `as` followed by the decimal form of a 32-bit Autonomous System
+  Number, no leading zeros: `asn:as64500`.
+
+A class outside this set MUST NOT be used unless the deployments comparing
+observations have agreed on both its meaning and its value space. Absent that
+agreement the §3a.2 obligations cannot be met and the vantage MUST be `null`.
 
 ### 3a.2 Requirements on the vocabulary
 
@@ -162,7 +175,16 @@ varied a field **contrary to a declaration it had itself published** — most
 plainly, one that positively asserted it does not vary. This is not an
 undeclared divergence; it is a published rule, broken.
 
-The name is bare because draft §11 reserves un-prefixed kind names for kinds the
+**The temporal rule is not optional.** This kind MUST NOT be emitted unless the
+declaration evaluated can be shown to predate the observation it contradicts.
+§4b prevents a source retroactively legitimizing a past divergence by publishing
+a broader declaration; the same reasoning applies in the opposite direction, with
+a different victim. A narrower declaration published after the fact would
+manufacture an accusation about an observation that violated nothing when it was
+made. Establishing publication order needs a witnessed history of what a source
+published when; a deployment without one MUST NOT emit this kind.
+
+The name is bare because draft §12 reserves un-prefixed kind names for kinds the
 draft itself seeds, and draft `-01` seeds this one. A kind introduced by any
 other party MUST carry a reverse-DNS or URI prefix. Consumers MUST treat an
 unrecognised kind as informational and MUST NOT reject a record for carrying
