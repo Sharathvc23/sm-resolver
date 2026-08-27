@@ -4,6 +4,51 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/) and this project adheres to
 [Semantic Versioning](https://semver.org/).
 
+## [0.3.0] — 2026-08-27
+
+Vantage becomes a controlled term, findings carry their declaration state, and
+cross-source comparison is scoped to a cohort. Tracks
+`draft-chandra-agent-registry-corroboration-01`.
+
+### Changed — BREAKING
+- **`Finding.to_dict()` emits two further keys**, `declared` and
+  `declaration_version`. Additive to the mapping, but a consumer asserting an
+  exact dict, or validating against a schema with `additionalProperties: false`,
+  will break. `Finding.fingerprint()` is deliberately **unchanged** — it hashes
+  only `{kind, agent_id, detail}`, so a source publishing or revising a
+  declaration cannot alter the identity of a finding already being tracked, and
+  existing first-observation and dedup caches survive the upgrade intact.
+- **`SPEC.md` is `resolver/0.3-draft`.** §3a rewrites vantage as a controlled
+  `class:value` term (shared denotation, occupiability, non-overlap, bounded
+  cardinality). The kernel still carries a vantage as an opaque string and does
+  not validate the form; meeting those obligations is the sweeper's
+  responsibility.
+
+### Added
+- `Finding.declared` and `Finding.declaration_version` (SPEC.md §4b). A
+  declaration **annotates** a finding and never withdraws one: the finding is
+  emitted and the verdict is computed as though no declaration existed. The
+  kernel sets neither — it holds no declarations and verifies nothing.
+- The `scope_violation` finding kind (SPEC.md §4c) — a source varying contrary
+  to a declaration it published itself. Bare, not vendor-prefixed: draft §12
+  reserves un-prefixed names for kinds the draft seeds, and `-01` seeds this one.
+- `Declaration` and `diff_claims(..., declared=...)`. The map is inert,
+  already-verified data supplied by a layer above, exactly as the
+  `present`/`absent` classification already is. Zero runtime dependencies are
+  unaffected: the kernel performs no verification and no I/O.
+
+Where a declaration applies, two things change and only two — the
+`source_equivocation` finding is annotated, and the source is **not excluded**
+from cross-source comparison; its per-vantage values are compared against other
+sources' values for the same vantage. Suppressing the finding while leaving the
+exclusion in place — the obvious implementation — would let a source that
+declares variation serve one vantage a forged value and be reported `AGREE`,
+because nothing would remain to compare it against. A declaration redirects
+comparison into a cohort; it never removes comparison.
+
+With no declaration supplied, behaviour is unchanged: the cohort list is empty,
+a single cohort spans every claim, and all 39 pre-existing tests pass unmodified.
+
 ## [0.2.0] — 2026-07-04
 
 The claim model gains a vantage axis, sweeps carry a verdict, and findings carry
