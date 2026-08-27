@@ -16,7 +16,7 @@ SOURCE_EQUIVOCATION = "source_equivocation"
 
 # A source varied a field contrary to its OWN published Answer Scope — it
 # declared a rule and broke it. A strictly stronger accusation than an
-# undeclared divergence. Bare (un-prefixed) per draft §11, which reserves bare
+# undeclared divergence. Bare (un-prefixed) per draft §12, which reserves bare
 # names for kinds the draft itself seeds; this kind is seeded by draft -01. The
 # kernel never emits it — it has no declarations, so the layer that fetches and
 # matches them supplies it. Named here so the vocabulary is one thing.
