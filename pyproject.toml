@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "sm-resolver"
-version = "0.4.0"
+version = "0.5.0"
 description = "The source-agnostic corroboration kernel — Resolver[T], the View contract, a pure diff, and the Corroborator. Zero runtime dependencies."
 readme = "README.md"
 requires-python = ">=3.11"

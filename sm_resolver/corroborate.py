@@ -72,11 +72,11 @@ class Corroborator(Generic[ViewT]):
             claims: list[Claim[ViewT]] = []
             for resolver in self.resolvers:
                 try:
-                    resolved = await resolver.resolve(aid)
-                    if len(resolved) == 3:
-                        status, view, outcome = resolved
+                    with_outcome = getattr(resolver, "resolve_with_outcome", None)
+                    if with_outcome is not None:
+                        status, view, outcome = await with_outcome(aid)
                     else:
-                        status, view = resolved
+                        status, view = await resolver.resolve(aid)
                         outcome = status
                 except Exception:
                     # The kernel cannot tell a timeout from a crashed adapter, so
