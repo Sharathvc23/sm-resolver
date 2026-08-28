@@ -4,6 +4,42 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/) and this project adheres to
 [Semantic Versioning](https://semver.org/).
 
+## [0.4.0] — 2026-08-28
+
+A claim now says *why* it ended as it did. Tracks
+`draft-chandra-agent-registry-corroboration-02` (in preparation).
+
+### Added
+
+- **A seeded outcome vocabulary** — `OUTCOME_TIMEOUT`, `OUTCOME_UNREACHABLE`,
+  `OUTCOME_REFUSED`, `OUTCOME_UNPARSEABLE`, `OUTCOME_UNVERIFIABLE`.
+
+  `Claim.outcome` existed but was set to the status, so it duplicated a field
+  already present and carried nothing. That mattered because the diff excludes
+  every `error` claim equally: a timeout, a persistently unreachable host, an
+  explicit refusal and an unreadable body are different signals about a source,
+  and a pattern of refusals is not the same fact as a pattern of timeouts.
+
+  Bare names are reserved for values seeded here; a deployment introducing its own
+  MUST namespace it with a reverse-DNS or URI prefix, as finding kinds do, so two
+  implementations do not mint incomparable strings for the same condition.
+
+- **A `Resolver` MAY return a third element** carrying the outcome. Only the
+  resolver knows why a resolve ended as it did; the kernel cannot infer it. A
+  two-element resolver is unaffected and keeps its status as its outcome, so this
+  is additive.
+
+  An adapter that raises is recorded as `unreachable` rather than as the bare
+  status — the kernel cannot distinguish a timeout from a crashed adapter, so it
+  says the least specific true thing rather than guessing.
+
+### Changed
+
+- `SPEC.md` §2a states the vocabulary and one rule that is easy to get wrong:
+  **an outcome MUST NOT affect which claims enter the diff.** `status` decides
+  that. Were outcome to filter, a source could remove itself from comparison by
+  describing itself.
+
 ## [0.3.0] — 2026-08-27
 
 Vantage becomes a controlled term, findings carry their declaration state, and
