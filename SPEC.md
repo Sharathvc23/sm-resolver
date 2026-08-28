@@ -64,9 +64,15 @@ seeded here and by the draft.
 that. Outcome is provenance; were it to filter, a source could remove itself from
 comparison by describing itself.
 
-Only the resolver knows why a resolve ended as it did, so a `Resolver` MAY return
-a third element carrying it. A resolver that does not is unaffected and keeps its
-status as its outcome.
+Only the resolver knows why a resolve ended as it did, so a `Resolver` MAY expose
+`resolve_with_outcome`, returning `(status, view, outcome)`. The Corroborator
+prefers it when present and otherwise calls `resolve`, keeping the status as the
+outcome.
+
+A separate method rather than a third element of `resolve`: widening that return
+type to a union type-breaks every consumer that unpacks two values, even though
+nothing breaks at runtime. Duck-typing the addition costs those consumers
+nothing, and follows the `vantage` precedent.
 
 ## 3. The view contract
 

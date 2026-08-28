@@ -4,6 +4,25 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/) and this project adheres to
 [Semantic Versioning](https://semver.org/).
 
+## [0.5.0] — 2026-08-28
+
+### Fixed — corrects 0.4.0
+
+- **The outcome channel is `resolve_with_outcome`, not a third element of
+  `resolve`.** 0.4.0 widened the `Resolver` protocol's return type to a union of
+  a two- and a three-tuple. Nothing broke at runtime, and 0.4.0 described that as
+  additive. It was not: every typed consumer that unpacks two values from
+  `resolve` now failed `mypy` with *"Too many values to unpack"*.
+
+  A resolver that wants to say why now exposes `resolve_with_outcome`, which the
+  Corroborator prefers when present. `resolve` is unchanged, so consumers
+  typecheck again, and this follows the `vantage` precedent of duck-typing an
+  optional capability rather than widening a shared signature.
+
+  Found by a downstream build, not by this package's own tests — the suite only
+  exercises resolvers written against the new shape, so nothing here noticed that
+  the old shape had stopped typechecking.
+
 ## [0.4.0] — 2026-08-28
 
 A claim now says *why* it ended as it did. Tracks

@@ -44,13 +44,20 @@ class Resolver(Protocol[T_co]):
     unreachable or unparseable source is the ``"error"`` claim (no claim),
     never a false ``"absent"``.
 
-    ``resolve`` MAY return a third element, an outcome string saying *why* the
-    resolve ended as it did (see the ``OUTCOME_*`` values above). Only the
-    resolver knows; the kernel cannot infer it. Omitting it is supported and
-    keeps the status as the outcome, which is the least specific honest answer.
+    A resolver MAY also expose ``resolve_with_outcome``, returning
+    ``(status, view, outcome)`` — an outcome string saying *why* the resolve
+    ended as it did (see the ``OUTCOME_*`` values above). Only the resolver
+    knows; the kernel cannot infer it. The Corroborator prefers it when present
+    and otherwise calls ``resolve``, keeping the status as the outcome.
+
+    It is a separate method rather than a third element of ``resolve`` on
+    purpose. Widening this return type to a union would type-break every
+    consumer that unpacks two values, even though nothing breaks at runtime.
+    Duck-typing the addition costs those consumers nothing, and follows the
+    ``vantage`` precedent.
     """
 
     @property
     def label(self) -> str: ...
 
-    async def resolve(self, agent_id: str) -> tuple[Status, T_co | None] | tuple[Status, T_co | None, str]: ...
+    async def resolve(self, agent_id: str) -> tuple[Status, T_co | None]: ...

@@ -39,16 +39,20 @@ class TwoTuple:
 
 
 class ThreeTuple:
-    """A resolver that says why."""
+    """A resolver that opts in to saying why."""
 
     label = "modern"
 
     def __init__(self, status: Status, outcome: str) -> None:
         self._status, self._outcome = status, outcome
 
-    async def resolve(self, agent_id: str) -> tuple[Status, StubView | None, str]:
+    async def resolve(self, agent_id: str) -> tuple[Status, StubView | None]:
         view = StubView(endpoint="https://a.example") if self._status == "present" else None
-        return self._status, view, self._outcome
+        return self._status, view
+
+    async def resolve_with_outcome(self, agent_id: str) -> tuple[Status, StubView | None, str]:
+        status, view = await self.resolve(agent_id)
+        return status, view, self._outcome
 
 
 @pytest.mark.asyncio
@@ -117,7 +121,10 @@ async def test_an_outcome_never_decides_which_claims_are_compared() -> None:
         def __init__(self, label: str, endpoint: str, outcome: str) -> None:
             self.label, self._endpoint, self._outcome = label, endpoint, outcome
 
-        async def resolve(self, agent_id: str) -> tuple[Status, StubView | None, str]:
+        async def resolve(self, agent_id: str) -> tuple[Status, StubView | None]:
+            return "present", StubView(endpoint=self._endpoint)
+
+        async def resolve_with_outcome(self, agent_id: str) -> tuple[Status, StubView | None, str]:
             return "present", StubView(endpoint=self._endpoint), self._outcome
 
     c = Corroborator(
