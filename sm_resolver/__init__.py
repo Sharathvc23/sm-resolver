@@ -29,7 +29,15 @@ from .claim import Claim
 from .corroborate import Corroborator, OnFinding
 from .diff import Declaration, diff_claims, diff_views
 from .models import CONFIRMED, OMISSION, SCOPE_VIOLATION, SOURCE_EQUIVOCATION, SUSPECTED, Finding
-from .resolver import Resolver, Status
+from .resolver import (
+    OUTCOME_REFUSED,
+    OUTCOME_TIMEOUT,
+    OUTCOME_UNPARSEABLE,
+    OUTCOME_UNREACHABLE,
+    OUTCOME_UNVERIFIABLE,
+    Resolver,
+    Status,
+)
 from .sweep import SweepResult, Verdict
 from .view import View, ViewT
 
@@ -47,6 +55,11 @@ __all__ = [
     "CONFIRMED",
     "Declaration",
     "OMISSION",
+    "OUTCOME_REFUSED",
+    "OUTCOME_TIMEOUT",
+    "OUTCOME_UNPARSEABLE",
+    "OUTCOME_UNREACHABLE",
+    "OUTCOME_UNVERIFIABLE",
     "SCOPE_VIOLATION",
     "SOURCE_EQUIVOCATION",
     "SUSPECTED",

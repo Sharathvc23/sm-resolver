@@ -13,7 +13,7 @@ from typing import Generic
 from .claim import Claim
 from .diff import diff_claims
 from .models import CONFIRMED, SUSPECTED, Finding
-from .resolver import Resolver
+from .resolver import OUTCOME_UNREACHABLE, Resolver
 from .sweep import SweepResult, Verdict
 from .view import ViewT
 
@@ -72,10 +72,17 @@ class Corroborator(Generic[ViewT]):
             claims: list[Claim[ViewT]] = []
             for resolver in self.resolvers:
                 try:
-                    status, view = await resolver.resolve(aid)
+                    resolved = await resolver.resolve(aid)
+                    if len(resolved) == 3:
+                        status, view, outcome = resolved
+                    else:
+                        status, view = resolved
+                        outcome = status
                 except Exception:
-                    status, view = "error", None
-                claims.append(Claim(resolver.label, getattr(resolver, "vantage", None), status, view, ts, status))
+                    # The kernel cannot tell a timeout from a crashed adapter, so
+                    # it says the least specific true thing rather than guessing.
+                    status, view, outcome = "error", None, OUTCOME_UNREACHABLE
+                claims.append(Claim(resolver.label, getattr(resolver, "vantage", None), status, view, ts, outcome))
 
             findings = [self._confirm(f, ts) for f in diff_claims(aid, claims)]
 

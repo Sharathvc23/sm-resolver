@@ -32,6 +32,42 @@ An `error` claim MUST be excluded from the diff entirely. It is NOT `absent`: **
 source that failed to answer has asserted nothing, and MUST NOT be treated as
 claiming the subject is absent.** A resolver MUST NOT raise; a failure is `error`.
 
+## 2a. Why a claim ended as it did
+
+Every claim carries an **outcome** alongside its status. `status` says whether the
+source made a claim; `outcome` says how that came about.
+
+It matters most for `error`, which the diff excludes entirely: a timeout, a
+persistently unreachable host, an explicit refusal, and a body that could not be
+read are different signals about a source, and collapsing them loses the
+difference. A pattern of refusals from one source is not the same fact as a
+pattern of timeouts.
+
+Values seeded here, bare:
+
+| | |
+| --- | --- |
+| `timeout` | no answer within the deadline |
+| `unreachable` | transport failed |
+| `refused` | the source declined to answer |
+| `unparseable` | answered; the body could not be read |
+| `unverifiable` | answered; the source's own verification failed |
+
+A `present` or `absent` claim MAY use its status as its outcome, which is the
+least specific honest answer.
+
+A party introducing another value MUST namespace it with a reverse-DNS or URI
+prefix, exactly as for finding kinds (§4c). Bare names are reserved for values
+seeded here and by the draft.
+
+**An outcome MUST NOT affect which claims enter the diff.** `status` decides
+that. Outcome is provenance; were it to filter, a source could remove itself from
+comparison by describing itself.
+
+Only the resolver knows why a resolve ended as it did, so a `Resolver` MAY return
+a third element carrying it. A resolver that does not is unaffected and keeps its
+status as its outcome.
+
 ## 3. The view contract
 
 A `present` claim MUST be reduced to a **view**: an object exposing
