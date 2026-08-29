@@ -129,3 +129,31 @@ def test_each_cohort_that_disagrees_earns_its_own_finding() -> None:
         {A: "https://eu-a.example", B: "https://eu-b.example"},
         {A: "https://us-a.example", B: "https://us-b.example"},
     ]
+
+
+def test_a_cohort_scoped_finding_names_its_cohort() -> None:
+    # The identity of a field divergence includes the cohort (see
+    # `Finding._identity`). Without the diff recording it, two disagreements
+    # between the same sources in different contexts share a fingerprint, and one
+    # would mask the other in first-observation tracking.
+    claims = [
+        _present(A, EU, StubView(endpoint="https://eu-a.example")),
+        _present(A, US, StubView(endpoint="https://us-a.example")),
+        _present(B, EU, StubView(endpoint="https://eu-b.example")),
+        _present(B, US, StubView(endpoint="https://us-b.example")),
+    ]
+    declared = {(A, "endpoint"): Declaration("region", "7"), (B, "endpoint"): Declaration("region", "2")}
+    findings = [f for f in diff_claims("x", claims, declared=declared) if f.kind == "endpoint"]
+    assert [f.detail["cohort"] for f in findings] == [EU, US]
+    assert len({f.fingerprint() for f in findings}) == 2
+
+
+def test_an_unscoped_finding_has_no_cohort() -> None:
+    # With no declaration in play there is one cohort spanning every claim, and
+    # the finding keeps the shape it had before cohorts existed.
+    claims = [
+        _present(A, None, StubView(endpoint="https://one.example")),
+        _present(B, None, StubView(endpoint="https://two.example")),
+    ]
+    (finding,) = diff_claims("x", claims)
+    assert "cohort" not in finding.detail

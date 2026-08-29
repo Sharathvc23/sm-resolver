@@ -48,15 +48,56 @@ class Finding:
     declared: bool = False
     declaration_version: str | None = None
 
+    def _identity(self) -> object:
+        """The part of ``detail`` that identifies *which* disagreement this is.
+
+        Who disagreed about what, never what they said. Values change while a
+        disagreement persists, and keying on them made a source that rotated its
+        answer look like a stream of unrelated findings, each restarting at
+        ``suspected`` and never reaching ``confirmed``. That is the staleness
+        abuse of draft §14, made worse: the pattern did not accumulate under one
+        identity either.
+
+        A kind this kernel does not seed has no known detail shape, so nothing
+        may be assumed stable and the whole of it is used.
+        """
+        d = self.detail
+        if self.kind == OMISSION:
+            return {"present_on": d.get("present_on"), "missing_from": d.get("missing_from")}
+        if self.kind == SOURCE_EQUIVOCATION:
+            return {"source": d.get("source"), "field": d.get("field")}
+        if self.kind == SCOPE_VIOLATION:
+            return {
+                "source": d.get("source"),
+                "field": d.get("field"),
+                "declared_class": d.get("declared_class"),
+            }
+        values = d.get("values")
+        if "." not in self.kind and isinstance(values, dict):
+            # A field divergence. The participating sources and the cohort are
+            # the identity; the cohort matters because the same sources can
+            # disagree differently in two contexts, and without it those two
+            # disagreements collapse into one.
+            return {
+                "field": d.get("field"),
+                "sources": sorted(values),
+                "cohort": d.get("cohort"),
+            }
+        return d
+
     def fingerprint(self) -> str:
-        """A stable key identifying the *disagreement* — excludes
-        ``confirmation`` (which changes as the same finding is re-observed) and
-        the declaration state (which changes when a source publishes or revises
-        an Answer Scope), so first-observation tracking and emission-dedup are
-        stable across both."""
+        """A stable key identifying the *disagreement*.
+
+        Excludes ``confirmation`` (which changes as the same finding is
+        re-observed), the declaration state (which changes when a source
+        publishes or revises an Answer Scope), and the observed values (which
+        change while the same disagreement persists) — so first-observation
+        tracking and emission-dedup are stable across all three. See
+        ``_identity``."""
         return json.dumps(
-            {"kind": self.kind, "agent_id": self.agent_id, "detail": self.detail},
+            {"kind": self.kind, "agent_id": self.agent_id, "identity": self._identity()},
             sort_keys=True,
+            default=str,
         )
 
     def to_dict(self) -> dict[str, object]:
