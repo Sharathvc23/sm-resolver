@@ -6,9 +6,13 @@ question, and it reports any disagreement. It is the machinery under
 cross-registry / cross-method divergence detection, factored out so any layer can
 reuse it.
 
-It is the reference implementation of the IETF draft [*Multi-Source
-Corroboration for AI Agent Discovery*](https://github.com/Sharathvc23/sm-divergence)
-(`draft-chandra-agent-registry-corroboration-00`).
+It is the reference implementation of the IETF Internet-Draft [*Multi-Source
+Corroboration for AI Agent Discovery*](https://datatracker.ietf.org/doc/draft-chandra-agent-registry-corroboration/).
+`-01` is the published revision; `-02` is prepared and adds the claim-outcome
+vocabulary this release implements.
+
+Requires Python 3.11 or later, and has **no runtime dependencies** — adopting it
+commits you to nothing beyond the standard library.
 
 Five pieces, and only the resolvers know a wire format:
 
@@ -18,8 +22,13 @@ Five pieces, and only the resolvers know a wire format:
   It hides one source's format (an HTTP GET, a DID resolve, a DNS lookup) and
   MUST NOT raise — an unreachable source is `error` (no claim), never a false
   `absent`. It MAY expose a `vantage` — an observation context, `class:value`
-  from a controlled vocabulary (SPEC.md §3a).
-- **`Claim`** — one source's answer from one vantage at one instant.
+  from a controlled vocabulary (SPEC.md §3a) — and `resolve_with_outcome`,
+  returning why a resolve ended as it did (`timeout`, `unreachable`, `refused`,
+  `unparseable`, `unverifiable`). Both are optional; a resolver that exposes
+  neither behaves exactly as before.
+- **`Claim`** — one source's answer from one vantage in one sweep, carrying the
+  status, the view, and the outcome (SPEC.md §2a). An outcome records *why* a
+  resolve ended as it did and never affects which claims are compared.
 - **`diff_claims`** — the pure diff: a sweep's claims → `Finding` list. It emits
   `omission` (present on one source, positively absent on another),
   `source_equivocation` (one source's vantages disagree with each other), and
@@ -100,6 +109,7 @@ make ci-local   # uv: sync → ruff → format → mypy --strict → pytest
 
 ---
 
-*First published: 2026-07-04 | Last modified: 2026-07-04*
+*First published: 2026-07-04 | Last modified: 2026-08-28*
 
-*Personal research contributions aligned with [Project NANDA](https://projectnanda.org) standards. [Stellarminds.ai](https://stellarminds.ai)*
+*Published by [Stellarminds.ai](https://stellarminds.ai) under the MIT licence.
+Aligned with [Project NANDA](https://projectnanda.org) standards.*
