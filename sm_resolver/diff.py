@@ -170,7 +170,15 @@ def diff_claims(
                 if field == name and cohort in per_vantage:
                     values_here[source] = per_vantage[cohort]
             if len(set(values_here.values())) > 1:
-                findings.append(Finding(name, agent_id, {"field": name, "values": dict(sorted(values_here.items()))}))
+                detail: dict[str, object] = {"field": name, "values": dict(sorted(values_here.items()))}
+                if cohort is not None:
+                    # Named only when the comparison was scoped, so an unscoped
+                    # finding keeps the shape it had before cohorts existed. The
+                    # cohort is part of the finding's identity: the same sources
+                    # can disagree differently in two contexts, and without it one
+                    # of those disagreements masks the other.
+                    detail["cohort"] = cohort
+                findings.append(Finding(name, agent_id, detail))
 
     return findings
 

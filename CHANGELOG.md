@@ -4,6 +4,31 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/) and this project adheres to
 [Semantic Versioning](https://semver.org/).
 
+## [0.6.0] — 2026-08-28
+
+### Fixed — BREAKING (finding identity)
+
+- **A source that changes its answer no longer restarts as a new finding.**
+  `fingerprint()` keyed on the whole `detail`, which carries the observed values,
+  so every value change produced a different finding that reset to `suspected`.
+
+  A source rotating its lie faster than the staleness window therefore never
+  reached `confirmed` — the staleness abuse described in draft §14, made worse,
+  because each rotation had a different key and the pattern did not accumulate
+  under one identity either.
+
+  The identity is now per kind and excludes values (`SPEC.md` §4d): who
+  disagreed about what, never what they said.
+
+  **Breaking:** existing `_first_seen`/`_emitted` caches key differently. On
+  upgrade, findings already being tracked are seen as new and restart at
+  `suspected` once.
+
+- **A cohort-scoped field divergence names its cohort** in `detail`, and the
+  cohort participates in the identity. Without it, the same sources disagreeing
+  in two contexts shared a fingerprint and one masked the other. An unscoped
+  finding is unchanged and carries no `cohort`.
+
 ## [0.5.0] — 2026-08-28
 
 ### Fixed — corrects 0.4.0

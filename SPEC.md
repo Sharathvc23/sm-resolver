@@ -236,6 +236,38 @@ The kernel never emits this kind, for the same reason it never sets `declared`.
 It is named here so that implementations agree on one identifier rather than
 minting their own.
 
+## 4d. Finding identity
+
+Confirmation (§4a) asks whether a later finding is the *same disagreement* as an
+earlier one. The key is **who disagreed about what**, never **what they said**.
+
+Per kind:
+
+| Kind | Identity |
+| --- | --- |
+| `omission` | `present_on`, `missing_from` |
+| `source_equivocation` | `source`, `field` |
+| `scope_violation` | `source`, `field`, `declared_class` |
+| a view field name | `field`, the participating source labels, `cohort` |
+| anything else | the whole `detail` |
+
+**Observed values MUST NOT participate.** Values change while the same
+disagreement persists, and keying on them makes a source that rotates its answer
+produce a stream of unrelated findings, each restarting at `suspected` and never
+reaching `confirmed`. That is the staleness abuse of draft §14 made worse: the
+pattern does not accumulate under one identity either, so even the count of
+short-lived divergences from one source is diluted.
+
+**The cohort MUST participate** where the comparison was scoped. The same sources
+can disagree differently in two contexts, and without it one of those
+disagreements masks the other.
+
+**A kind this document does not seed MUST key on the whole `detail`.** Its shape
+is unknown, so no part of it may be assumed stable — including a `values` member,
+which such a kind may use to mean something else entirely.
+
+`confirmation` and the declaration state (§4b) do not participate either.
+
 ## 4a. Observation time and confirmation (draft §7)
 
 Every claim carries `observed_at` (epoch seconds). A finding is **`suspected`**
