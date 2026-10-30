@@ -1,52 +1,115 @@
-# Publish sm-resolver to PyPI on a version tag, via PyPI Trusted Publishing (OIDC).
+# Publish sm-resolver to PyPI via PyPI Trusted Publishing (OIDC), and tag the release.
 #
 # No API token anywhere: PyPI is told (once, in its web UI) to trust THIS repo +
 # THIS workflow file, and the `id-token: write` permission below lets the job
 # mint a short-lived OIDC token PyPI accepts. See PUBLISHING.md for the one-time
 # setup and the exact values to type into PyPI's "Add a publisher" form.
 #
-# Fires only when a tag like `v0.1.0` is pushed — never on normal commits.
+# Two ways in, same job:
+#   - a push to `main` whose pyproject `version` is not yet on PyPI → publish it,
+#     then create and push the `vX.Y.Z` tag and a GitHub release. The version
+#     bump in pyproject.toml IS the release decision; nobody pushes tags by hand.
+#   - a pushed `vX.Y.Z` tag (the old path) → publish if not already on PyPI.
+# Either way a version already on PyPI is a no-op, never a red run.
 name: release
 
 on:
   push:
+    branches: [main, master]
     tags:
       - "v*"
+  workflow_dispatch:
 
 permissions:
   contents: read
 
+concurrency:
+  group: release
+  cancel-in-progress: false
+
 jobs:
   publish:
-    name: Build + publish to PyPI
+    name: Build + publish to PyPI + tag
     runs-on: ubuntu-latest
     permissions:
       # A job-level permissions block REPLACES the workflow-level one (it does not
-      # merge), so contents:read must be restated here or actions/checkout 404s on
-      # its own repo. Both lines are required.
-      contents: read # for actions/checkout
+      # merge), so contents must be restated here. `write` is needed to push the
+      # tag and create the GitHub release.
+      contents: write
       id-token: write # REQUIRED for Trusted Publishing — this is what replaces the token.
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
 
+      - name: Read version and decide
+        id: decide
+        run: |
+          set -euo pipefail
+          VERSION=$(python - <<'EOF'
+          import tomllib; print(tomllib.load(open("pyproject.toml","rb"))["project"]["version"])
+          EOF
+          )
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          if python - "$VERSION" <<'EOF'
+          import json, sys, urllib.request
+          v = sys.argv[1]
+          try:
+              with urllib.request.urlopen("https://pypi.org/pypi/sm-resolver/json", timeout=30) as r:
+                  on_pypi = v in json.load(r)["releases"]
+          except Exception as e:  # first release, or PyPI hiccup: try to publish
+              print("pypi lookup failed:", e); on_pypi = False
+          sys.exit(0 if on_pypi else 1)
+          EOF
+          then
+            echo "sm-resolver $VERSION is already on PyPI; nothing to publish."
+            echo "publish=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "sm-resolver $VERSION is not on PyPI; publishing."
+            echo "publish=true" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Build sdist + wheel
+        if: steps.decide.outputs.publish == 'true'
         run: |
           python -m pip install --upgrade build
           python -m build
 
       - name: Check the built distributions
+        if: steps.decide.outputs.publish == 'true'
         run: |
           python -m pip install --upgrade twine
           python -m twine check dist/*
 
       - name: Publish to PyPI
+        if: steps.decide.outputs.publish == 'true'
         # No `with: password:` — the action uses the OIDC token automatically.
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
-          # A re-pushed tag (e.g. a message reword) must no-op, not red-fail,
-          # when the version is already on PyPI.
           skip-existing: true
+
+      - name: Tag and release on GitHub
+        # Tags created here use GITHUB_TOKEN, which by design does not re-trigger
+        # workflows, so this cannot loop. Idempotent: an existing tag is left alone.
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.decide.outputs.version }}
+        run: |
+          set -euo pipefail
+          TAG="v$VERSION"
+          if git ls-remote --exit-code --tags origin "refs/tags/$TAG" >/dev/null 2>&1; then
+            echo "$TAG already exists."
+          else
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git tag -a "$TAG" -m "sm-resolver $VERSION"
+            git push origin "$TAG"
+            echo "pushed $TAG"
+          fi
+          if ! gh release view "$TAG" >/dev/null 2>&1; then
+            gh release create "$TAG" --title "sm-resolver $VERSION" --notes "See CHANGELOG.md for $VERSION." ${{ steps.decide.outputs.publish == 'true' && 'dist/*' || '' }}
+          fi
