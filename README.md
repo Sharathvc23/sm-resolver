@@ -9,7 +9,10 @@ reuse it.
 It is the reference implementation of the IETF Internet-Draft [*Multi-Source
 Corroboration for AI Agent Discovery*](https://datatracker.ietf.org/doc/draft-chandra-agent-registry-corroboration/).
 `-01` is the published revision; `-02` is prepared and adds the claim-outcome
-vocabulary this release implements.
+vocabulary and the supersession rule this release implements. The supersession
+rule is how corroboration composes with registry-assisted resolution of known
+subjects (DAWN): a registry's renewable binding carries a `sequence`, and the
+kernel reads it so that a lagging registry is attributed, not accused.
 
 Requires Python 3.11 or later, and has **no runtime dependencies** — adopting it
 commits you to nothing beyond the standard library.
@@ -32,8 +35,14 @@ Five pieces, and only the resolvers know a wire format:
 - **`diff_claims`** — the pure diff: a sweep's claims → `Finding` list. It emits
   `omission` (present on one source, positively absent on another),
   `source_equivocation` (one source's vantages disagree with each other), and
-  one finding per view field whose values disagree across sources. It never
-  learns its layer.
+  `stale_binding` (a source behind the current lease sequence in its scope), and
+  one finding per view field whose values disagree across current sources. It
+  never learns its layer.
+- **`Binding`** — a view MAY expose `binding() → Binding | None`, the claim's
+  position in a registry's renewable-lease sequence within one authority scope
+  (SPEC.md §3b). A source behind the current sequence is attributed as a
+  `stale_binding` finding and withheld from the field comparison: being behind
+  is not disagreeing, and propagation lag is never reported as tampering.
 - **`Corroborator`** — resolve every `(source, vantage)`, diff, apply
   confirmation, and return one `SweepResult` per subject: a verdict
   (`AGREE` / `DIVERGENT` / `INSUFFICIENT`), the claims, and the findings.
@@ -109,7 +118,7 @@ make ci-local   # uv: sync → ruff → format → mypy --strict → pytest
 
 ---
 
-*First published: 2026-07-04 | Last modified: 2026-08-28*
+*First published: 2026-07-04 | Last modified: 2026-10-30*
 
 *Published by [Stellarminds.ai](https://stellarminds.ai) under the MIT licence.
 Aligned with [Project NANDA](https://projectnanda.org) standards.*

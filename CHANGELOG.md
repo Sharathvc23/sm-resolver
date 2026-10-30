@@ -4,6 +4,36 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/) and this project adheres to
 [Semantic Versioning](https://semver.org/).
 
+## [0.7.0] — 2026-10-30
+
+Tracks `draft-chandra-agent-registry-corroboration-02` (in preparation), which
+aligns corroboration with registry-assisted resolution of known subjects.
+
+### Added
+
+- **`Binding` and the optional `View.binding()` method** (`SPEC.md` §3b). A
+  registry that resolves a known subject without a DNS discovery anchor issues
+  the subject-to-target binding as a renewable lease: a `sequence` that increases
+  within one authority scope whenever the target, publisher, or authority
+  evidence changes. A view may now expose that position. Duck-typed, like a
+  resolver's `vantage`; a view without it is unchanged.
+
+- **`stale_binding` finding and the supersession rule** (`SPEC.md` §4e). Within
+  one scope the highest sequence is current; a claim below it is superseded,
+  attributed as `stale_binding` to the source serving it, and withheld from
+  field divergence and `source_equivocation`. Two registries serving the same
+  subject at sequences 13 and 14 were previously an `endpoint` divergence — a
+  tampering accusation against an honest source that was merely behind. Equal
+  sequences with different values still surface as a field finding. Omission
+  and the verdict rule are unchanged. Identity is `(source, scope)`, never the
+  sequence numbers, so a source that stays one step behind is one persistent
+  finding that reaches `confirmed`.
+
+### Changed
+
+- Spec version `resolver/0.4-draft`. `SPEC.md` §4 now states that field
+  divergence and `source_equivocation` are computed over current claims only.
+
 ## [0.6.0] — 2026-08-28
 
 ### Fixed — BREAKING (finding identity)

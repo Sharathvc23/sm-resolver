@@ -22,6 +22,14 @@ SOURCE_EQUIVOCATION = "source_equivocation"
 # matches them supplies it. Named here so the vocabulary is one thing.
 SCOPE_VIOLATION = "scope_violation"
 
+# A source serving a binding whose sequence is below the highest valid sequence
+# observed for the same subject in the same authority scope (SPEC.md §4e). It
+# is behind, not disagreeing: the superseded claim is attributed here and
+# contributes no value to field divergence, so lag is never reported as
+# tampering. Seeded bare by draft -02. Unlike `scope_violation` the kernel DOES
+# emit this one — sequence is inert data on the view, like `comparable()`.
+STALE_BINDING = "stale_binding"
+
 # Confirmation states (observation-time discipline): a first-seen disagreement
 # is suspected; one re-observed past the staleness window is confirmed.
 SUSPECTED = "suspected"
@@ -36,7 +44,8 @@ class Finding:
     field that diverged. ``detail`` carries the contradicting claims (uniform
     per kind): ``{present_on, missing_from}`` for ``omission``, ``{field,
     values}`` for a field divergence, ``{source, field, values}`` for
-    ``source_equivocation``. ``confirmation`` distinguishes legitimate
+    ``source_equivocation``, ``{source, scope, sequence, current_sequence,
+    current_on}`` for ``stale_binding``. ``confirmation`` distinguishes legitimate
     propagation delay (``suspected``) from persistent disagreement
     (``confirmed``).
     """
@@ -72,6 +81,11 @@ class Finding:
                 "field": d.get("field"),
                 "declared_class": d.get("declared_class"),
             }
+        if self.kind == STALE_BINDING:
+            # Which source is behind, in which sequence space. Not the sequence
+            # numbers: a source that stays one step behind a moving current
+            # is one persistent condition, not a stream of new ones.
+            return {"source": d.get("source"), "scope": d.get("scope")}
         values = d.get("values")
         if "." not in self.kind and isinstance(values, dict):
             # A field divergence. The participating sources and the cohort are

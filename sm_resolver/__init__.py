@@ -10,7 +10,11 @@ divergence detection, factored out so any layer can reuse it:
   from a controlled vocabulary (SPEC.md §3a).
 - ``Claim`` — one source's answer from one vantage at one instant.
 - ``diff_claims`` — the pure diff: claims → ``Finding`` list (``omission``,
-  ``source_equivocation``, and per-field divergence). It never learns its layer.
+  ``source_equivocation``, ``stale_binding``, and per-field divergence). It
+  never learns its layer.
+- ``Binding`` — a view MAY expose ``binding()`` (sequence within an authority
+  scope, SPEC.md §3b); a superseded claim is attributed as ``stale_binding``
+  rather than compared.
 - ``Corroborator`` — resolve every (source, vantage), diff, apply confirmation
   (``suspected`` / ``confirmed``), and return a ``SweepResult`` per subject with
   a verdict (``AGREE`` / ``DIVERGENT`` / ``INSUFFICIENT``).
@@ -28,7 +32,15 @@ from importlib.metadata import version as _dist_version
 from .claim import Claim
 from .corroborate import Corroborator, OnFinding
 from .diff import Declaration, diff_claims, diff_views
-from .models import CONFIRMED, OMISSION, SCOPE_VIOLATION, SOURCE_EQUIVOCATION, SUSPECTED, Finding
+from .models import (
+    CONFIRMED,
+    OMISSION,
+    SCOPE_VIOLATION,
+    SOURCE_EQUIVOCATION,
+    STALE_BINDING,
+    SUSPECTED,
+    Finding,
+)
 from .resolver import (
     OUTCOME_REFUSED,
     OUTCOME_TIMEOUT,
@@ -39,7 +51,7 @@ from .resolver import (
     Status,
 )
 from .sweep import SweepResult, Verdict
-from .view import View, ViewT
+from .view import Binding, View, ViewT
 
 # Derived from installed distribution metadata, never hand-maintained. A literal
 # here is a second copy of pyproject's ``version`` with nothing comparing them —
@@ -62,7 +74,9 @@ __all__ = [
     "OUTCOME_UNVERIFIABLE",
     "SCOPE_VIOLATION",
     "SOURCE_EQUIVOCATION",
+    "STALE_BINDING",
     "SUSPECTED",
+    "Binding",
     "Claim",
     "Corroborator",
     "Finding",

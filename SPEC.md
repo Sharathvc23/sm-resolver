@@ -1,8 +1,8 @@
 # Corroboration Kernel — Procedure
 
-**Spec version:** `resolver/0.3-draft`
+**Spec version:** `resolver/0.4-draft`
 **Status:** DRAFT / Working Draft
-**Last edited:** 2026-08-26
+**Last edited:** 2026-10-30
 
 The keywords MUST, MUST NOT, SHOULD, SHOULD NOT, MAY are to be interpreted as in RFC 2119.
 
@@ -161,6 +161,36 @@ An implementation that can distinguish them SHOULD record the distinction, so th
 "this source was observed from one vantage only" is not read as "this source does
 not vary." How that distinction is carried is out of scope for this version.
 
+## 3b. Bindings and sequence (draft -02)
+
+A registry that resolves a known subject to a target without a DNS discovery
+anchor issues that subject-to-target binding as a **renewable lease**, not a
+permanent claim: a `sequence` that MUST increase whenever the target, publisher,
+ownership state, or authority evidence changes, together with validity bounds
+and revocation information. Sequences are comparable only **within one authority
+scope** — the sequence space of the issuer that validates the subject — and a
+resolver holding several bindings from the same scope MUST reject an older
+sequence once it has observed a newer valid one.
+
+The kernel carries this as inert data, exactly as it carries `comparable()`. A
+view MAY expose `binding() -> Binding | None`, where a `Binding` is
+`(sequence, scope)`: `sequence` a non-negative integer and `scope` a string
+naming the sequence space, or `null` for a layer whose sources share one. A
+view that does not expose it, returns `null`, or returns a malformed value
+(negative, non-integer, raising) has no binding and is neither current nor
+superseded by sequence.
+
+Two sources serving the same subject at different sequences in the same scope
+are not disagreeing about the subject. One is behind. §4e attributes that
+condition to the source that is behind, and withholds its claim from the field
+comparison, so that propagation lag or a replayed binding is never reported as
+a disagreement with the source that is current.
+
+The agent's own self-description sequence (draft §8) is a different clock from
+the registry's binding sequence: the first is set by the subject, the second by
+the issuer that bound the subject to a target. A layer that carries both keeps
+them in separate scopes.
+
 ## 4. The diff (draft §6)
 
 Input is the set of claims for one subject in one sweep. `error` claims
@@ -177,6 +207,9 @@ contribute nothing. Per subject:
   source's single agreed non-`None` value; emit a finding of `kind = <field
   name>` iff more than one distinct value appears across sources. Detail:
   `{"field": <name>, "values": {source: value}}`.
+
+Field divergence and `source_equivocation` are computed over **current** claims
+only (§4e); `omission` is computed over all present claims.
 
 The diff MUST be pure: deterministic, no I/O, no raising. A subject MAY produce
 multiple findings.
@@ -236,6 +269,37 @@ The kernel never emits this kind, for the same reason it never sets `declared`.
 It is named here so that implementations agree on one identifier rather than
 minting their own.
 
+## 4e. Supersession
+
+Before the field comparison, the present claims are partitioned by binding scope
+(§3b). Within each scope the highest sequence is **current**. A claim whose
+sequence is lower is **superseded**:
+
+- emit one **`stale_binding`** finding per `(source, scope)`, with detail
+  `{"source": S, "scope": <scope>, "sequence": n, "current_sequence": top,
+  "current_on": [sources at top]}`;
+- withhold every superseded claim from field divergence and from
+  `source_equivocation`. A source that is current from one vantage and
+  superseded from another is mid-propagation, not equivocating: it is not serving
+  two *current* answers.
+
+A superseded claim is still `present` for `omission` — the subject exists on that
+source — and still decisive for the verdict (§5). Claims with no binding are
+current in their own right and compared as before; a layer that never stamps a
+sequence sees no change in behaviour.
+
+Equal sequences with different values are the disagreement supersession exists
+to isolate, and MUST still surface as a field finding.
+
+The verdict rule is unchanged: a `stale_binding` finding is a finding, and the
+sweep is `DIVERGENT`. A lagging source inside the staleness window (§4a) is
+`suspected`; one still behind after it is `confirmed`, which is the replay and
+stale-cache signal of the resolution draft's security considerations. Deciding
+what a confirmed stale binding is worth is the consumer's judgement, as for
+every other finding (§4b).
+
+The name is bare because draft `-02` seeds it.
+
 ## 4d. Finding identity
 
 Confirmation (§4a) asks whether a later finding is the *same disagreement* as an
@@ -248,6 +312,7 @@ Per kind:
 | `omission` | `present_on`, `missing_from` |
 | `source_equivocation` | `source`, `field` |
 | `scope_violation` | `source`, `field`, `declared_class` |
+| `stale_binding` | `source`, `scope` |
 | a view field name | `field`, the participating source labels, `cohort` |
 | anything else | the whole `detail` |
 
@@ -294,7 +359,10 @@ inputs, the §4 finding set and §5 verdict: agreement → `AGREE`, none; presen
 absent → `DIVERGENT`, `omission`; distinct cross-source field values →
 `DIVERGENT`, a finding of that field's kind; a source's vantages disagreeing →
 `DIVERGENT`, `source_equivocation` (and no spurious cross-source divergence for
-that field); single/identical value or one-value-beside-`None` → `AGREE`, none;
+that field); a lower sequence in one scope → `DIVERGENT`, `stale_binding`
+(and no field divergence charged against the superseded source); equal sequences
+with different values → `DIVERGENT`, a finding of that field's kind; unrelated
+scopes → not compared by sequence; single/identical value or one-value-beside-`None` → `AGREE`, none;
 fewer than two decisive claims → `INSUFFICIENT`; `error`/unreachable → excluded
 (never `omission`). The diff is pure and deterministic, so conformance is
 mechanical.

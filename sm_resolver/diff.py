@@ -8,9 +8,9 @@ from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 
 from .claim import Claim
-from .models import OMISSION, SOURCE_EQUIVOCATION, Finding
+from .models import OMISSION, SOURCE_EQUIVOCATION, STALE_BINDING, Finding
 from .resolver import Status
-from .view import ViewT
+from .view import Binding, ViewT
 
 
 @dataclass(frozen=True)
@@ -36,6 +36,76 @@ def _vantage_class(vantage: str | None) -> str | None:
     return head if sep else None
 
 
+def _binding(claim: Claim[ViewT]) -> Binding | None:
+    """A claim's lease position, if its view exposes one (SPEC.md §3b).
+
+    Duck-typed, like a resolver's ``vantage``. Anything that is not a well-formed
+    ``Binding`` with a non-negative integer sequence is treated as no binding:
+    a malformed sequence must not silently supersede a well-formed one.
+    """
+    view = claim.view
+    if view is None:
+        return None
+    method = getattr(view, "binding", None)
+    if method is None:
+        return None
+    try:
+        binding = method()
+    except Exception:
+        return None
+    if not isinstance(binding, Binding):
+        return None
+    if isinstance(binding.sequence, bool) or not isinstance(binding.sequence, int) or binding.sequence < 0:
+        return None
+    return binding
+
+
+def _supersede(agent_id: str, present: list[Claim[ViewT]]) -> tuple[list[Claim[ViewT]], list[Finding]]:
+    """Split present claims into current and superseded (SPEC.md §4e).
+
+    Within each binding scope the highest sequence is current. A claim below it
+    is superseded: one ``stale_binding`` finding per ``(source, scope)``, and the
+    claim is withheld from the field diff. Claims with no binding are current
+    in their own right — a layer that never stamps sequences sees no change.
+    """
+    bound: dict[str | None, list[tuple[Claim[ViewT], Binding]]] = {}
+    for c in present:
+        b = _binding(c)
+        if b is not None:
+            bound.setdefault(b.scope, []).append((c, b))
+
+    current: list[Claim[ViewT]] = []
+    findings: list[Finding] = []
+    stale_ids: set[int] = set()
+    for scope in sorted(bound, key=str):
+        members = bound[scope]
+        top = max(b.sequence for _, b in members)
+        current_on = sorted({c.source for c, b in members if b.sequence == top})
+        seen: set[str] = set()
+        for c, b in sorted(members, key=lambda cb: (cb[0].source, str(cb[0].vantage))):
+            if b.sequence == top:
+                continue
+            stale_ids.add(id(c))
+            if c.source in seen:
+                continue
+            seen.add(c.source)
+            findings.append(
+                Finding(
+                    STALE_BINDING,
+                    agent_id,
+                    {
+                        "source": c.source,
+                        "scope": scope,
+                        "sequence": b.sequence,
+                        "current_sequence": top,
+                        "current_on": current_on,
+                    },
+                )
+            )
+    current = [c for c in present if id(c) not in stale_ids]
+    return current, findings
+
+
 def diff_claims(
     agent_id: str,
     claims: Iterable[Claim[ViewT]],
@@ -51,8 +121,12 @@ def diff_claims(
       - ``source_equivocation`` — one source's vantages disagree on a field's
         non-``None`` value; that source then contributes no agreed value to the
         cross-source comparison for that field.
+      - ``stale_binding`` — a source's claim carries a lease sequence below the
+        highest observed in the same authority scope (SPEC.md §4e). That claim
+        is attributed here and withheld from the field comparison: being behind
+        is not disagreeing.
       - one per view field (``endpoint``, ``did``, ``key``, …) whose per-source
-        agreed non-``None`` values disagree across sources.
+        agreed non-``None`` values disagree across *current* sources.
 
     ``declared`` maps ``(source, field)`` to an already-verified ``Declaration``.
     Where one applies — the source's vantages for that field are all on the
@@ -85,6 +159,13 @@ def diff_claims(
     findings: list[Finding] = []
     if present_sources and absent_sources:
         findings.append(Finding(OMISSION, agent_id, {"present_on": present_sources, "missing_from": absent_sources}))
+
+    # Supersession (SPEC.md §4e). A superseded claim still counts as `present`
+    # for omission — the subject exists on that source — but it is withheld
+    # from the field comparison below, so a source that is merely behind is
+    # never reported as disagreeing with the source that is current.
+    present, stale = _supersede(agent_id, present)
+    findings.extend(stale)
 
     # Fields, in first-seen order across present views.
     field_names: list[str] = []
