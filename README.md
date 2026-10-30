@@ -8,7 +8,7 @@ reuse it.
 
 It is the reference implementation of the IETF Internet-Draft [*Multi-Source
 Corroboration for AI Agent Discovery*](https://datatracker.ietf.org/doc/draft-chandra-agent-registry-corroboration/).
-`-01` is the published revision; `-02` is prepared and adds the claim-outcome
+`-02` is the published revision (30 October 2026); it adds the claim-outcome
 vocabulary and the supersession rule this release implements. The supersession
 rule is how corroboration composes with registry-assisted resolution of known
 subjects (DAWN): a registry's renewable binding carries a `sequence`, and the
